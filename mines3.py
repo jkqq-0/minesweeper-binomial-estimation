@@ -42,20 +42,19 @@ def getAdjacent(arr, i, j):
 
 
 class Mines:
-    filename = str()
-    board = list()
-    bomb_perimiter_coord_dict = dict()
-    number_square_coord_list = list()
-    bomb_square_coord_list = list()
-    safe_square_coord_list = list()
-    flat_perimiter_labels = list()
-    valid_scenarios = list()
-    probabilities = dict()
-    height = 0
-    width = 0
-
     def __init__(self, filename, board_bomb_count, board_square_count):
-        with open(filename, "r") as csvfile:
+        self.filename = filename
+        self.board = list()
+        self.bomb_perimiter_coord_dict = dict()
+        self.number_square_coord_list = list()
+        self.bomb_square_coord_list = list()
+        self.safe_square_coord_list = list()
+        self.flat_perimiter_labels = list()
+        self.valid_scenarios = list()
+        self.probabilities = dict()
+        self.height = 0
+        self.width = 0
+        with open(self.filename, "r") as csvfile:
             csvreader = csv.reader(csvfile)  # Reader object
 
             for row_idx, row in enumerate(csvreader):  # Read rows
