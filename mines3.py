@@ -42,7 +42,9 @@ def getAdjacent(arr, i, j):
 
 
 class Mines:
-    def __init__(self, filename, board_bomb_count, board_square_count):
+    def __init__(
+        self, filename, board_bomb_count, board_square_count, labels_order=None
+    ):
         self.filename = filename
         self.board = list()
         self.bomb_perimiter_coord_dict = dict()
@@ -51,7 +53,8 @@ class Mines:
         self.safe_square_coord_list = list()
         self.flat_perimiter_labels = list()
         self.valid_scenarios = list()
-        self.probabilities = dict()
+        self.probabilities_by_bomb_count = dict()
+        self.probabilities_by_square = dict()
         self.height = 0
         self.width = 0
         with open(self.filename, "r") as csvfile:
@@ -88,14 +91,21 @@ class Mines:
                 board_bomb_count - len(self.bomb_square_coord_list)
             ) / unknown_squares
             print(f"Rho: {self.rho}")
-        self.__generate_coord_dict()
+        if labels_order is not None:
+            self.__generate_coord_dict(labels_order)
+        else:
+            self.__generate_coord_dict()
         self.__generate_scenarios()
-        self.__generate_probabilities()
+        self.__generate_probabilities_by_bomb_count()
+        self.__generate_probabilities_by_square()
 
-    def __generate_coord_dict(self):
+    def __generate_coord_dict(self, labels_order=None):
         labels = list()
-        for s in itertools.islice(iter_all_strings(), self.width * self.height):
-            labels.append(s)
+        if labels_order is not None:
+            labels.extend(labels_order)
+        else:
+            for s in itertools.islice(iter_all_strings(), self.width * self.height):
+                labels.append(s)
 
         count = 0
 
@@ -164,7 +174,7 @@ class Mines:
             else:
                 self.valid_scenarios.append(grid_from_scenario)
 
-    def __generate_probabilities(self):
+    def __generate_probabilities_by_bomb_count(self):
         unique_bomb_counts = set()
         bombs_per_scenario = list()
         for scenario in self.valid_scenarios:
@@ -181,7 +191,7 @@ class Mines:
         )
         sum_of_probs = sum(case_probabilities)
         for count, prob in list(zip(unique_bomb_counts, case_probabilities)):
-            self.probabilities[int(count)] = {
+            self.probabilities_by_bomb_count[int(count)] = {
                 "probability": prob,
                 "normalized_probability": (prob) / sum_of_probs,
             }
@@ -193,13 +203,28 @@ class Mines:
             case_scenario_counts[int(count)] += 1
         print(case_scenario_counts)
 
-        for count, probs in self.probabilities.items():
+        for count, probs in self.probabilities_by_bomb_count.items():
             probs["scenario_weighted_probability"] = (
                 probs["normalized_probability"] / case_scenario_counts[count]
             )
 
-    def print_probabilities(self):
-        for count, probs in self.probabilities.items():
+    def __generate_probabilities_by_square(self):
+        for (row, col), label in self.bomb_perimiter_coord_dict.items():
+            square_probability = 0
+            for scenario in self.valid_scenarios:
+                if not scenario[row][col]:
+                    continue
+                # subtract number of known bombs since we don't need to calucate the probability of clicking a bomb in those squares
+                scenario_bomb_count = np.concatenate(scenario).sum() - len(
+                    self.bomb_square_coord_list
+                )
+                square_probability += self.probabilities_by_bomb_count[
+                    scenario_bomb_count
+                ]["scenario_weighted_probability"]
+            self.probabilities_by_square[label] = square_probability
+
+    def print_case_probabilities(self):
+        for count, probs in self.probabilities_by_bomb_count.items():
             table_data = [[f"Case with {count} Bombs", "Value"]]
             table_data.extend(
                 [[f"{key}", f"{value}"] for (key, value) in probs.items()]
@@ -209,6 +234,16 @@ class Mines:
                     table_data, headers="firstrow", tablefmt="grid", floatfmt=".8f"
                 )
             )
+
+    def print_square_probabilities(self):
+        table_data = [["Square", "Probability"]]
+        table_data.extend(
+            [
+                [f"{label}", f"{value}"]
+                for (label, value) in self.probabilities_by_square.items()
+            ]
+        )
+        print(tabulate(table_data, headers="firstrow", tablefmt="grid", floatfmt=".8f"))
 
     def print_scenarios(self):
         table = list()
@@ -228,7 +263,9 @@ class Mines:
                 bomb_count += scenario[row][col]
             scenario_row.append(bomb_count)
             scenario_row.append(
-                self.probabilities[bomb_count]["scenario_weighted_probability"]
+                self.probabilities_by_bomb_count[bomb_count][
+                    "scenario_weighted_probability"
+                ]
             )
             table.append(scenario_row)
             count += 1
@@ -266,7 +303,7 @@ class Mines:
                 row_string.append(f"{row[i]} & ")
                 bomb_count += row[i]
             row_string.append(
-                f"{bomb_count} & {self.probabilities[bomb_count]["scenario_weighted_probability"]:.3f} \\\\"
+                f"{bomb_count} & {self.probabilities_by_bomb_count[bomb_count]["scenario_weighted_probability"]:.3f} \\\\"
             )
             print("".join(row_string))
             scenario_number += 1
@@ -276,8 +313,10 @@ class Mines:
         print("\\end{table}")
 
 
-filename = "grid-8.csv"
-complex_grid = Mines(filename, 40, 256)
-complex_grid.print_probabilities()
+labels_order = ["A", "B", "C", "N", "D", "L", "M", "E", "K", "F", "J", "I", "H", "G"]
+filename = "grid-7.csv"
+complex_grid = Mines(filename, 40, 256, labels_order)
 print()
 complex_grid.print_scenarios_latex()
+complex_grid.print_case_probabilities()
+complex_grid.print_square_probabilities()
