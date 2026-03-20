@@ -337,14 +337,32 @@ def main():
     parser.add_argument("--square-count", "-s", type=int, default=256, help="Total number of squares on the board (default: 256).")
     parser.add_argument("--labels-order", "-l", type=str, nargs="+", help="Optional explicit ordering of perimeter labels (e.g., A C D F).")
     
+    parser.add_argument("--hide-case-probs", action="store_true", help="Do not print case probabilities.")
+    parser.add_argument("--hide-square-probs", action="store_true", help="Do not print square probabilities.")
+    parser.add_argument("--latex", action="store_true", help="Print scenarios as a LaTeX table instead of the regular tabulate table.")
+    parser.add_argument("--print-coord-dict", action="store_true", help="Print the bomb perimeter coordinate dictionary.")
+    
     args = parser.parse_args()
     
     complex_grid = Mines(args.filename, args.bomb_count, args.square_count, args.labels_order)
     print()
-    complex_grid.print_scenarios_latex()
-    complex_grid.print_case_probabilities()
-    complex_grid.print_square_probabilities()
-    print(complex_grid.bomb_perimiter_coord_dict)
+    
+    if args.latex:
+        complex_grid.print_scenarios_latex()
+    else:
+        complex_grid.print_scenarios()
+        
+    if not args.hide_case_probs:
+        print()
+        complex_grid.print_case_probabilities()
+        
+    if not args.hide_square_probs:
+        print()
+        complex_grid.print_square_probabilities()
+        
+    if args.print_coord_dict:
+        print()
+        print(complex_grid.bomb_perimiter_coord_dict)
 
 if __name__ == "__main__":
     main()
