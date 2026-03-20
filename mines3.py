@@ -1,3 +1,4 @@
+import argparse
 import itertools
 import math
 from string import ascii_uppercase
@@ -90,7 +91,7 @@ class Mines:
             self.rho = (
                 board_bomb_count - len(self.bomb_square_coord_list)
             ) / unknown_squares
-            print(f"Rho: {self.rho}")
+            print(f"Rho ≈ {self.rho:.5f}")
         if labels_order is not None:
             self.__generate_coord_dict(labels_order)
         else:
@@ -186,11 +187,12 @@ class Mines:
             bombs_per_scenario.append(scenario_bomb_count)
 
         unknown_squares_count = len(self.flat_perimiter_labels)
+        sorted_unique_bomb_counts = sorted(list(unique_bomb_counts))
         case_probabilities = stats.binom.pmf(
-            list(unique_bomb_counts), unknown_squares_count, self.rho
+            sorted_unique_bomb_counts, unknown_squares_count, self.rho
         )
         sum_of_probs = sum(case_probabilities)
-        for count, prob in list(zip(unique_bomb_counts, case_probabilities)):
+        for count, prob in list(zip(sorted_unique_bomb_counts, case_probabilities)):
             self.probabilities_by_bomb_count[int(count)] = {
                 "probability": prob,
                 "normalized_probability": (prob) / sum_of_probs,
@@ -253,8 +255,16 @@ class Mines:
         header_row.append("Bomb Count")
         header_row.append("Scenario Probability")
         table.append(header_row)
+
+        sorted_scenarios = sorted(
+            self.valid_scenarios,
+            key=lambda s: sum(
+                s[row][col] for row, col in self.bomb_perimiter_coord_dict.keys()
+            ),
+        )
+
         count = 1
-        for scenario in self.valid_scenarios:
+        for scenario in sorted_scenarios:
             bomb_count = 0
             scenario_row = list()
             scenario_row.append(count)
@@ -286,8 +296,16 @@ class Mines:
             + "\\makecell{Mine\\\\Count} & \\makecell{Scenario\\\\Probability} \\\\[1ex]"
         )
         print("\t\\midrule")
+
+        sorted_scenarios = sorted(
+            self.valid_scenarios,
+            key=lambda s: sum(
+                s[row][col] for row, col in self.bomb_perimiter_coord_dict.keys()
+            ),
+        )
+
         table = list()
-        for scenario in self.valid_scenarios:
+        for scenario in sorted_scenarios:
             scenario_row = list()
             for row, col in self.bomb_perimiter_coord_dict.keys():
                 scenario_row.append(int(scenario[row][col]))
@@ -303,7 +321,7 @@ class Mines:
                 row_string.append(f"{row[i]} & ")
                 bomb_count += row[i]
             row_string.append(
-                f"{bomb_count} & {self.probabilities_by_bomb_count[bomb_count]["scenario_weighted_probability"]:.3f} \\\\"
+                f"{bomb_count} & {self.probabilities_by_bomb_count[bomb_count]['scenario_weighted_probability']:.3f} \\\\"
             )
             print("".join(row_string))
             scenario_number += 1
@@ -313,10 +331,21 @@ class Mines:
         print("\\end{table}")
 
 
-labels_order = ["A", "B", "C", "N", "D", "L", "M", "E", "K", "F", "J", "I", "H", "G"]
-filename = "grid-7.csv"
-complex_grid = Mines(filename, 40, 256, labels_order)
-print()
-complex_grid.print_scenarios_latex()
-complex_grid.print_case_probabilities()
-complex_grid.print_square_probabilities()
+def main():
+    parser = argparse.ArgumentParser(description="Analyze Minesweeper probabilities from a CSV grid.")
+    parser.add_argument("filename", type=str, help="Path to the CSV file representing the board.")
+    parser.add_argument("--bomb-count", "-b", type=int, default=40, help="Total number of bombs on the board (default: 40).")
+    parser.add_argument("--square-count", "-s", type=int, default=256, help="Total number of squares on the board (default: 256).")
+    parser.add_argument("--labels-order", "-l", type=str, nargs="+", help="Optional explicit ordering of perimeter labels (e.g., A C D F).")
+    
+    args = parser.parse_args()
+    
+    complex_grid = Mines(args.filename, args.bomb_count, args.square_count, args.labels_order)
+    print()
+    complex_grid.print_scenarios_latex()
+    complex_grid.print_case_probabilities()
+    complex_grid.print_square_probabilities()
+    print(complex_grid.bomb_perimiter_coord_dict)
+
+if __name__ == "__main__":
+    main()
