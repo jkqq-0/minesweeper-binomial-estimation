@@ -1,6 +1,5 @@
 import argparse
 import itertools
-import math
 from string import ascii_uppercase
 import csv
 import numpy as np
