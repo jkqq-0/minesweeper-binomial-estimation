@@ -1,0 +1,20 @@
+[project]
+name = "mines"
+version = "0.0.1"
+requires-python = ">=3.14.0, <3.15"
+dependencies = [
+    "tabulate",
+    "scipy",
+    "numpy",
+]
+
+[dependency-groups]
+dev = []
+
+[tool.uv]
+package = false
+default-groups = "all"
+
+[[tool.uv.index]]
+name = "pypi"
+url = "https://pypi.org/simple"
